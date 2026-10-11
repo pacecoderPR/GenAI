@@ -25,3 +25,16 @@
   - **Streaming:** the response is a sequence of chunks, not one object. Each chunk carries a piece of text, and the finish reason and usage metadata show up on some of them (usually the last). I loop over the chunks, print each piece as it arrives, add it to a running string, and keep the latest finish reason and token counts I see. After the loop ends, I check the finish reason once.
   - **Finish reason:** `STOP` is a normal finish, and anything else (`MAX_TOKENS`, a safety stop) means the text may be incomplete. Check it after every call.
   - **Python:** `if __name__ == "__main__"` keeps demo code from running on import, and `@dataclass` returns several values as one named object.
+
+
+  ## 2026-10-10 (Week 0, Day 4)
+- **Did:** Built a multi-turn streaming chat CLI (`chat_cli.py`) that reuses `ask()` from `stream_call.py`. It keeps the conversation history, prints each reply live, and shows tokens and cost per turn and as running totals.
+- **Broke / confused:**
+  - My first version printed the whole `Result` object, so every reply showed up twice. Fixed by printing only the token and cost numbers.
+  - `ask()` defaulted to `max_tokens=200`, which would cut chat replies short and store the cut-off text in the history. Raised the cap for chat.
+  - The model said "I've added your last name to my memory", which is false. It only knows my name because I resend the history each turn.
+- **Learned:**
+  - **Calling code from another file:** `from stream_call import ask` loads the functions, and the `if __name__ == "__main__":` guard stops the demo code in `stream_call.py` from running on import.
+  - **Real-time streaming:** the reply arrives as chunks. Inside `ask()`, a loop prints each chunk with `end=""` and `flush=True` so it appears as it's generated, and also adds it to a string. `chat_cli.py` only prints the `Gemini:` label and receives the finished text at the end.
+  - **History:** it's a list of `Content` objects with a role (`user` or `model`) and parts. I add the user message before the call and the model reply after it finishes.
+  - **Tokens grow every turn:** input(n) = input(n-1) + output(n-1) + new message. Over 5 turns my input went from 8 to 98 tokens. Cost grows because the whole history is resent each time.

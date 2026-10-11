@@ -27,6 +27,7 @@ class Result:
     input_tokens: int
     output_tokens: int  # reply tokens + thinking tokens (both billed as output)
     cost: float
+    prompt_history: list[types.Content] | None = None
 
 
 def estimate_cost(input_tokens: int, output_tokens: int) -> float:
@@ -36,10 +37,11 @@ def estimate_cost(input_tokens: int, output_tokens: int) -> float:
     )
 
 
-def ask(prompt: str, temperature: float = 0.7, max_tokens: int = 200) -> Result:
+def ask(prompt: str|list, temperature: float = 0.7, max_tokens: int = 200) -> Result:
     text = ""
     finish_reason = None
     input_tokens = reply_tokens = thinking_tokens = 0
+    prompt_history = prompt if isinstance(prompt, list) else None
 
     stream = client.models.generate_content_stream(
         model=MODEL,
@@ -65,8 +67,7 @@ def ask(prompt: str, temperature: float = 0.7, max_tokens: int = 200) -> Result:
             reply_tokens = usage.candidates_token_count or reply_tokens
             thinking_tokens = usage.thoughts_token_count or thinking_tokens
 
-    print()
-
+  
     # Check once, after the stream has ended.
     if finish_reason is None:
         print("[WARNING] No finish reason was reported.")
@@ -82,6 +83,7 @@ def ask(prompt: str, temperature: float = 0.7, max_tokens: int = 200) -> Result:
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         cost=estimate_cost(input_tokens, output_tokens),
+        prompt_history=prompt_history
     )
 
 
